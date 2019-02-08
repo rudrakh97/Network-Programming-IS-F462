@@ -4,10 +4,11 @@
 #include <string.h>
 #define MAX 500
 
+char buff[MAX], buff1[MAX];
+
 int main()
 {
     int fd1[2], fd2[2], fd3[2], fd4[2], fd5[2], fd6[2], level;
-    char buff[MAX], buff1[MAX];
     if(pipe(fd1)==-1)
     {
         perror("Pipe 1 Error");
