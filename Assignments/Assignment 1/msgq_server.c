@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <mqueue.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#define SERVER "/server"
-#define U_CLIENT "/uclient"
+#define SERVER "/serverqueue"
+#define U_CLIENT "/uclientqueue"
 #define MAX_MSGS 10
 #define MAX_MSG_SIZE 1024
 #define MAX_USERS 50
@@ -26,7 +29,7 @@ int open_server()
 	attr.mq_msgsize = MAX_MSG_SIZE;
 	attr.mq_curmsgs = 0;
 
-	if((server = mq_open(SERVER, O_RDONLY | OCREAT, 666, &attr)) == -1)
+	if((server = mq_open(SERVER, O_RDWR | O_CREAT, 666, &attr)) == -1)
 	{
 		perror(">> Server start error");
 		return 1;
@@ -45,7 +48,7 @@ int open_uclient()
 	attr.mq_msgsize = MAX_MSG_SIZE;
 	attr.mq_curmsgs = 0;
 
-	if((uclient = mq_open(U_CLIENT, O_WRONLY | OCREAT, 666, &attr)) == -1)
+	if((uclient = mq_open(U_CLIENT, O_RDWR | O_CREAT, 666, &attr)) == -1)
 	{
 		perror(">> Universal client start error");
 		return 1;
@@ -58,12 +61,68 @@ int open_uclient()
 
 int read_server_queue()
 {
-	if((mq_recieve(server, in_buffer, MAX_MSG_SIZE+10, NULL)) == -1)
+	if((mq_receive(server, in_buffer, MAX_MSG_SIZE+10, NULL)) == -1)
 	{
 		perror(">> Server queue read error");
 		return 1;
 	}
-	printf(">> Message recieved ...\n");
+	printf(">> Message received ...\n");
+	return 0;
+}
+
+int send_uclient_queue()
+{
+	if((mq_send(uclient, out_buffer, strlen(out_buffer)+1,0)) == -1)
+	{
+		perror(">> Server write error (Universal Client)");
+		return 1;
+	}
+	return 0;
+}
+
+int send_client_queue(int client_id)
+{
+	// TO DO
+	return 0;
+}
+
+int list()
+{
+	memset(out_buffer, '\0', sizeof(out_buffer));
+	strcpy(out_buffer,"List of Active groups: ");
+	int ind = 23;
+	for(int i=0;i<MAX_GROUPS;++i)
+	{
+		for(int j=0;j<MAX_USERS;++j)
+			if(lookup_matrix[i][j] == 1)
+			{
+				if(i < 10)
+				{
+					out_buffer[ind] = i+'0';
+					ind++;
+					out_buffer[ind] = ' ';
+					ind++;
+				}
+				else
+				{
+					out_buffer[ind] = (i/10)+'0';
+					ind++;
+					out_buffer[ind] = (i%10)+'0';
+					ind++;
+					out_buffer[ind] = ' ';
+					ind++;
+				}
+				break;
+			}
+	}
+	if( send_uclient_queue() == 1)
+		return 1;
+	return 0;
+}
+
+int join()
+{
+	// TO DO
 	return 0;
 }
 
@@ -73,12 +132,16 @@ int message()
 	{
 		if(in_buffer[1] == 'l' && in_buffer[2] == 'i' && in_buffer[3] == 's' && in_buffer[4] == 't') // !list
 		{
-			// TO DO
+			printf(">> Processing list request ...\n");
+			if(list() != 0)
+				perror(">> Listing error");
 			return 0;
 		}
 		else if(in_buffer[1] == 'j' && in_buffer[2] == 'o' && in_buffer[3] == 'i' && in_buffer[4] == 'n') // !join
 		{
-			// TO DO
+			printf(">> Processing join request...\n");
+			if(join() != 0)
+				perror(">> Could not join");
 			return 0;
 		}
 		return 2;
@@ -86,11 +149,6 @@ int message()
 	else if(in_buffer[0] == '@')
 		return 0;
 	return 2;
-}
-
-int send_client_queue(int client_id)
-{
-	// TO DO
 }
 
 int main()
@@ -131,7 +189,7 @@ int main()
 		}
 		else if(flag == 2)
 		{
-			printf(">> Invalid message recieved ... Ignoring ...\n");
+			printf(">> Invalid message received ... Ignoring ...\n");
 			continue;
 		}
 	}
