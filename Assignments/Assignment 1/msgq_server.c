@@ -9,7 +9,6 @@
 #include <fcntl.h>
 
 #define SERVER "/sq"
-#define U_CLIENT "/ucq"
 #define MAX_MSGS 10
 #define MAX_MSG_SIZE 1024
 #define PERMISSIONS 0660
@@ -17,7 +16,7 @@
 #define MAX_USERNAME_SIZE 20
 #define MAX_GROUPS 10
 
-mqd_t server, uclient, client;
+mqd_t server, client;
 
 int user_lookup[MAX_USERS];
 int lookup_matrix[MAX_GROUPS][MAX_USERS];
@@ -42,25 +41,6 @@ int open_server()
 
 }
 
-int open_uclient()
-{
-	struct mq_attr attr;
-	attr.mq_flags = 0;
-	attr.mq_maxmsg = MAX_MSGS;
-	attr.mq_msgsize = MAX_MSG_SIZE;
-	attr.mq_curmsgs = 0;
-
-	if((uclient = mq_open(U_CLIENT, O_WRONLY | O_CREAT, PERMISSIONS, &attr)) == -1)
-	{
-		perror(">> Universal client start error");
-		return 1;
-	}
-
-	printf(">> Universal client open successful ...\n");
-	return 0;
-
-}
-
 int read_server_queue()
 {
 	memset(in_buffer, '\0', sizeof(in_buffer));
@@ -70,16 +50,6 @@ int read_server_queue()
 		return 1;
 	}
 	printf(">> Message received ...\n");
-	return 0;
-}
-
-int send_uclient_queue()
-{
-	if((mq_send(uclient, out_buffer, strlen(out_buffer)+1,0)) == -1)
-	{
-		perror(">> Server write error (Universal Client)");
-		return 1;
-	}
 	return 0;
 }
 
@@ -143,7 +113,14 @@ int list()
 				break;
 			}
 	}
-	if( send_uclient_queue() == 1)
+	int pow = 1, pid = 0, j = strlen(in_buffer)-1;
+	while(!isspace(in_buffer[j]))
+	{
+		pid += pow*(in_buffer[j]-'0');
+		pow*=10;
+		j--;
+	}
+	if( send_client_queue(pid) == 1)
 		return 1;
 	return 0;
 }
@@ -180,11 +157,19 @@ int join()
 		return 0;
 	}
 	for(ind=0;ind<MAX_USERS;++ind)
+	{
+		if(user_lookup[ind] == client_pid)
+			break;
+	}
+	if(ind == MAX_USERS)
+	{
+		for(ind=0;ind<MAX_USERS;++ind)
 		if(user_lookup[ind] == 0)
 		{
 			user_lookup[ind] = client_pid;
 			break;
 		}
+	}
 	if(ind == MAX_USERS)
 	{
 		strcpy(out_buffer, "Couldn't join group. User limit exceeded!");
@@ -230,8 +215,6 @@ void exit_handler(int sig_no)
 {
 	mq_close(server);
 	mq_unlink(SERVER);
-	mq_close(uclient);
-	mq_unlink(U_CLIENT);
 	printf("\n>> Server closed\n");
 	signal(sig_no, SIG_DFL);
 	raise(sig_no);
@@ -247,9 +230,7 @@ int main()
 	// Open server and universal client
 	if( open_server() > 0 )
 		exit(1);
-	if( open_uclient() > 0 )
-		exit(1);
-	
+
 	while(1)
 	{
 		memset(in_buffer, '\0', sizeof(in_buffer));
@@ -281,22 +262,26 @@ int main()
 				j--;
 			}
 			printf(">> Relaying message to group %d ...\n", group_no);
-			int legal = 1;
+			int legal = -1;
 			for(int i=0;i<MAX_USERS;++i)
 			{
 				if(user_lookup[i] == pid)
 				{
 					if(lookup_matrix[group_no][i]==0)
 					{
-						strcpy(out_buffer, "Join group before posting!");
-						send_client_queue(pid);
 						legal = 0;
 						break;
 					}
+					else
+						legal = 1;
 				}
 			}
-			if(legal == 0)
+			if(legal != 1)
+			{
+				strcpy(out_buffer, "Join group before posting!");
+				send_client_queue(pid);
 				continue;
+			}
 			for(int i=0;i<MAX_USERS;++i)
 			{
 				if(lookup_matrix[group_no][i] == 1 && user_lookup[i] != pid)

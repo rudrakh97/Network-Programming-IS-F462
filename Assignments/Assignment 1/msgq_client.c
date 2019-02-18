@@ -8,7 +8,6 @@
 #include <fcntl.h>
 
 #define SERVER "/sq"
-#define U_CLIENT "/ucq"
 #define MAX_MSGS 10
 #define MAX_MSG_SIZE 1024
 #define PERMISSIONS 0660
@@ -16,7 +15,7 @@
 #define MAX_USERNAME_SIZE 20
 #define MAX_GROUPS 10
 
-mqd_t server, uclient, client;
+mqd_t server, client;
 
 char in_buffer[MAX_MSG_SIZE+10], out_buffer[MAX_MSG_SIZE+10], clientq[15], pid[15];
 
@@ -29,19 +28,6 @@ int open_server()
 	}
 
 	printf(">> Server open successful ...\n");
-	return 0;
-
-}
-
-int open_uclient()
-{
-	if((uclient = mq_open(U_CLIENT, O_RDONLY)) == -1)
-	{
-		perror(">> Universal client open error");
-		return 1;
-	}
-
-	printf(">> Universal client open successful ...\n");
 	return 0;
 
 }
@@ -68,18 +54,6 @@ int open_client()
 		return 1;
 	}
 	printf(">> Client open successful: %s ...\n", clientq);
-	return 0;
-}
-
-int read_uclient_queue()
-{
-	if((mq_receive(uclient, in_buffer, MAX_MSG_SIZE+10, NULL)) == -1)
-	{
-		perror(">> Server queue read error");
-		return 1;
-	}
-	printf(">> ");
-	puts(in_buffer);
 	return 0;
 }
 
@@ -111,8 +85,6 @@ void exit_handler(int sig_no)
 {
 	mq_close(server);
 	mq_unlink(SERVER);
-	mq_close(uclient);
-	mq_unlink(U_CLIENT);
 	mq_close(client);
 	mq_unlink(clientq);
 	printf("\n>> Client exited\n");
@@ -129,8 +101,6 @@ int main()
 
 	if( open_server() > 0 )
 		exit(1);
-	if( open_uclient() > 0 )
-		exit(1);
 	if( open_client() > 0 )
 		exit(1);
 
@@ -143,18 +113,15 @@ int main()
 			printf(">> ");
 			gets(out_buffer);
 			send_server_queue();
-			memset(in_buffer, '\0', sizeof(in_buffer));
-			if(out_buffer[0] == '!' && out_buffer[1] == 'l' && out_buffer[2] == 'i' && out_buffer[3] == 's' && out_buffer[4] == 't') // !list
-			{
-				read_uclient_queue();
-				continue;
-			}
 		}
 	}
 	else
 	{
 		while(1)
+		{
+			memset(in_buffer, '\0', sizeof(in_buffer));
 			read_client_queue();
+		}
 	}
 	return 0;
 }
