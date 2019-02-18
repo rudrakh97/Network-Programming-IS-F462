@@ -1,15 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <mqueue.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define SERVER "/serverqueue"
-#define U_CLIENT "/uclientqueue"
+#define SERVER "/sq"
+#define U_CLIENT "/ucq"
 #define MAX_MSGS 10
 #define MAX_MSG_SIZE 1024
+#define PERMISSIONS 0660
 #define MAX_USERS 50
 #define MAX_USERNAME_SIZE 20
 #define MAX_GROUPS 10
@@ -20,7 +22,7 @@ char in_buffer[MAX_MSG_SIZE+10], out_buffer[MAX_MSG_SIZE+10];
 
 int open_server()
 {
-	if((server = mq_open(SERVER, O_RDWR)) == -1)
+	if((server = mq_open(SERVER, O_WRONLY)) == -1)
 	{
 		perror(">> Server open error");
 		return 1;
@@ -33,7 +35,7 @@ int open_server()
 
 int open_uclient()
 {
-	if((uclient = mq_open(U_CLIENT, O_RDWR)) == -1)
+	if((uclient = mq_open(U_CLIENT, O_RDONLY)) == -1)
 	{
 		perror(">> Universal client open error");
 		return 1;
@@ -58,7 +60,7 @@ int read_uclient_queue()
 
 int send_server_queue()
 {
-	if((mq_send(uclient, out_buffer, strlen(out_buffer)+1, 0)) == -1)
+	if((mq_send(server, out_buffer, strlen(out_buffer)+1, 0)) == -1)
 	{
 		perror(">> Server queue write error");
 		return 1;
@@ -67,8 +69,24 @@ int send_server_queue()
 	return 0;
 }
 
+void exit_handler(int sig_no)
+{
+	mq_close(server);
+	mq_unlink(SERVER);
+	mq_close(uclient);
+	mq_unlink(U_CLIENT);
+	printf("\n>> Client exited\n");
+	signal(sig_no, SIG_DFL);
+	raise(sig_no);
+}
+
 int main()
 {
+	// Handle closing of server
+	signal(SIGINT, exit_handler);
+	signal(SIGQUIT, exit_handler);
+	signal(SIGTSTP, exit_handler);
+
 	if( open_server() > 0 )
 		exit(1);
 	if( open_uclient() > 0 )
@@ -82,7 +100,5 @@ int main()
 		memset(in_buffer, '\0', sizeof(in_buffer));
 		read_uclient_queue();
 	}
-	mq_close(server);
-	mq_close(uclient);
-	return 0;	
+	return 0;
 }

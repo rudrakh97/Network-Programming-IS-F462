@@ -1,22 +1,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <mqueue.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define SERVER "/serverqueue"
-#define U_CLIENT "/uclientqueue"
+#define SERVER "/sq"
+#define U_CLIENT "/ucq"
 #define MAX_MSGS 10
 #define MAX_MSG_SIZE 1024
+#define PERMISSIONS 0660
 #define MAX_USERS 50
 #define MAX_USERNAME_SIZE 20
 #define MAX_GROUPS 10
 
 mqd_t server, uclient;
 
-char client_queues[MAX_USERS][MAX_USERNAME_SIZE];
 int user_lookup[MAX_USERS];
 int lookup_matrix[MAX_GROUPS][MAX_USERS];
 char in_buffer[MAX_MSG_SIZE+10], out_buffer[MAX_MSG_SIZE+10];
@@ -29,7 +30,7 @@ int open_server()
 	attr.mq_msgsize = MAX_MSG_SIZE;
 	attr.mq_curmsgs = 0;
 
-	if((server = mq_open(SERVER, O_RDWR | O_CREAT, 666, &attr)) == -1)
+	if((server = mq_open(SERVER, O_RDONLY | O_CREAT, PERMISSIONS, &attr)) == -1)
 	{
 		perror(">> Server start error");
 		return 1;
@@ -48,7 +49,7 @@ int open_uclient()
 	attr.mq_msgsize = MAX_MSG_SIZE;
 	attr.mq_curmsgs = 0;
 
-	if((uclient = mq_open(U_CLIENT, O_RDWR | O_CREAT, 666, &attr)) == -1)
+	if((uclient = mq_open(U_CLIENT, O_WRONLY | O_CREAT, PERMISSIONS, &attr)) == -1)
 	{
 		perror(">> Universal client start error");
 		return 1;
@@ -86,11 +87,17 @@ int send_client_queue(int client_id)
 	return 0;
 }
 
+void debug()
+{
+	puts(out_buffer);
+	printf("%c\n", out_buffer[24]);
+}
+
 int list()
 {
 	memset(out_buffer, '\0', sizeof(out_buffer));
 	strcpy(out_buffer,"List of Active groups: ");
-	int ind = 23;
+	int ind = 22;
 	for(int i=0;i<MAX_GROUPS;++i)
 	{
 		for(int j=0;j<MAX_USERS;++j)
@@ -135,6 +142,8 @@ int message()
 			printf(">> Processing list request ...\n");
 			if(list() != 0)
 				perror(">> Listing error");
+			debug();
+			printf(">> List return successful\n");
 			return 0;
 		}
 		else if(in_buffer[1] == 'j' && in_buffer[2] == 'o' && in_buffer[3] == 'i' && in_buffer[4] == 'n') // !join
@@ -151,17 +160,35 @@ int message()
 	return 2;
 }
 
+void exit_handler(int sig_no)
+{
+	mq_close(server);
+	mq_unlink(SERVER);
+	mq_close(uclient);
+	mq_unlink(U_CLIENT);
+	printf("\n>> Server closed\n");
+	signal(sig_no, SIG_DFL);
+	raise(sig_no);
+}
+
 int main()
 {
+	// Handle closing of server
+	signal(SIGINT, exit_handler);
+	signal(SIGQUIT, exit_handler);
+	signal(SIGTSTP, exit_handler);
+
+	// Open server and universal client
 	if( open_server() > 0 )
 		exit(1);
 	if( open_uclient() > 0 )
 		exit(1);
+	
 	while(1)
 	{
 		memset(in_buffer, '\0', sizeof(in_buffer));
 		read_server_queue();
-		int flag;
+		int flag; // type of message
 		memset(out_buffer, '\0', sizeof(out_buffer));
 		if((flag = message()) == 1) // not a request
 		{
@@ -193,5 +220,5 @@ int main()
 			continue;
 		}
 	}
-	return 0;	
+	return 0;
 }
