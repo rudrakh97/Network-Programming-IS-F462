@@ -14,7 +14,7 @@
 #define PERMISSIONS 0660
 #define MAX_USERS 50
 #define MAX_USERNAME_SIZE 20
-#define MAX_GROUPS 10
+#define MAX_GROUPS 1000
 
 mqd_t server, client;
 
@@ -94,22 +94,19 @@ int list()
 		for(int j=0;j<MAX_USERS;++j)
 			if(lookup_matrix[i][j] == 1)
 			{
-				if(i < 10)
+				int pow = 1;
+				while(pow*10 <= i)
+					pow*=10;
+				int tmp = i;
+				while(pow > 0)
 				{
-					out_buffer[ind] = i+'0';
+					out_buffer[ind] = (tmp/pow)+'0';
 					ind++;
-					out_buffer[ind] = ' ';
-					ind++;
+					tmp %= pow;
+					pow /= 10;
 				}
-				else
-				{
-					out_buffer[ind] = (i/10)+'0';
-					ind++;
-					out_buffer[ind] = (i%10)+'0';
-					ind++;
-					out_buffer[ind] = ' ';
-					ind++;
-				}
+				out_buffer[ind] = ' ';
+				ind++;
 				break;
 			}
 	}
