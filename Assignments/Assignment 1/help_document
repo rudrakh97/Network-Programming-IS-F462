@@ -1,0 +1,47 @@
+
+Following commands (or similar commands) are at disposal:
+
+(Note 1: Only the necessary features required to demonstrate the problem statement are implemented)
+(Note 2: Don't press Enter unless necessary)
+(Note 3: Redirection can be used in combination with pipes ( single / double / triple ))
+(Note 4: Always seperate different tokens with spaces like comma, file name, pipe symbol, redirection symbols, etc)
+(Note 5: Press enter after a statement)
+
+
+0. To exit:
+	>$ exit
+
+1. Input redirection:
+	>$ sort < file.txt
+
+2. Output redirection:
+	>$ sort > file.txt
+
+3. Append redirection:
+	>$ sort >> file.txt
+
+4. Single pipe:
+	>$ ps | wc | sort | wc 
+
+5. Double pipe: 
+	>$ ps || sort > file2.txt , wc >> file.txt
+	(sort will output to file2.txt and wc will append to file.txt)
+	(The above convention has to be followed always)
+	
+	>$ ps | sort || wc , sort
+
+6. Triple pipe:
+	>$ ps ||| wc > file.txt, sort >> file2.txt , wc
+	>$ ps | sort | wc ||| sort , wc , wc >> file.txt
+
+7. Shortcut command:
+   a) Insert command:
+   		>$ sc -i 1 ps || wc , sort
+   b) Execute command:
+   		>$ sc -e 1
+   c) Delete command:
+   		>$ sc -d 1
+   d) List all sc-commands:
+   		>$ sc -a
+   e) List specific command:
+   		>$ sc -f 2

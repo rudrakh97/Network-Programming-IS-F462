@@ -7,11 +7,11 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-#define MSGSIZE 500
-#define ARGSSIZE 21
+#define MSGSIZE 1000
+#define ARGSSIZE 25
 #define charcnt 15
 #define wordcnt 20
-#define linecnt 5
+#define linecnt 10
 
 
 #define processMax 20
@@ -29,9 +29,9 @@ char *mp_output;
 
 char *flagIO[linecnt][3];
 char *args[linecnt][ARGSSIZE];
-char  sc_lookup[linecnt][wordcnt][charcnt];
+char  para[linecnt][wordcnt][charcnt];
 
-int restart=0, executeSC = 0, cmdcnt=0, cmdno=-1, multi_pipe=0, isbg=0;
+int restart=0, executeSC = 0, cmdcnt=0, cmdno=-1, multi_pipe=0;
 int file_input = -1, file_output = -1;
 
 char *msg, *tok, *rest;
@@ -45,11 +45,11 @@ void fd_init(){
 	}
 }
 
-void sc_lookup_init(){
+void para_init(){
 	for(int i=0; i<linecnt; ++i){
 		for(int j=0; j<wordcnt; ++j){
 			for(int k=0; k<charcnt; ++k){
-				sc_lookup[i][j][k] = '\0';
+				para[i][j][k] = '\0';
 			}
 		}
 	}
@@ -108,7 +108,7 @@ int shortcut_mode(){
 			printf("%d <cmd>: ", a);
 			for(b=0; b<wordcnt; ++b){
 				for(c=0; c<charcnt; ++c){
-					printf("%c", sc_lookup[a][b][c]);
+					printf("%c", para[a][b][c]);
 				}
 				printf(" ");
 			}
@@ -151,14 +151,14 @@ int shortcut_mode(){
 			a = idx;
 			for(b=0; b<wordcnt; ++b){
 				for(c=0; c<charcnt; ++c){
-					sc_lookup[a][b][c] = '\0';
+					para[a][b][c] = '\0';
 				}
 			}
 			b = 0;
 			while( b < wordcnt && (tok = strtok_r(rest, " \n", &rest)) != NULL){
 				c = 0;
 				while( c < charcnt && tok[c] != '\0'){
-					sc_lookup[a][b][c] = tok[c];
+					para[a][b][c] = tok[c];
 					++c;
 				}
 				++b;
@@ -170,7 +170,7 @@ int shortcut_mode(){
 			if( a < 0 || a >= linecnt) break;
 			for(b=0; b<wordcnt; ++b){
 				for(c=0; c<charcnt; ++c){
-					sc_lookup[a][b][c] = '\0'; 
+					para[a][b][c] = '\0'; 
 				}
 			}
 			break;
@@ -181,7 +181,7 @@ int shortcut_mode(){
 			printf("%d <cmd>: ", a);
 			for(b=0; b<wordcnt; ++b){
 				for(c=0; c<charcnt; ++c){
-					printf("%c", sc_lookup[a][b][c]);
+					printf("%c", para[a][b][c]);
 				}
 				printf(" ");
 			}
@@ -198,7 +198,7 @@ int shortcut_mode(){
 			}
 			for(i=0, b=0; i<MSGSIZE && b < wordcnt; ++i, ++b){
 				for(c=0; c < charcnt; ++c, ++i){
-					msg[i] = sc_lookup[a][b][c];
+					msg[i] = para[a][b][c];
 				} 
 			}
 			for(i=0; i<MSGSIZE; ++i){
@@ -269,20 +269,13 @@ void append_redirection_controlblock(int pno){
 	}
 }
 
-void handler()
-{
-	printf("Termination signal sent to child\n");
-}
-
 //----------------------------------------------------
 
 int main(){
 
-	sc_lookup_init();
+	para_init();
 	args_init();
 	flagIO_init();
-
-	signal(SIGINT, handler);
 
 	msg = (char*) malloc(MSGSIZE * sizeof(char));
 	memset(msg, '\0', sizeof(msg));
@@ -317,19 +310,19 @@ int main(){
 			
 			while(j<ARGSSIZE && (tok=strtok_r(rest," \n",&rest))!=NULL){
 				if(strcmp(tok,arr[0]) == 0) break;
-				if(strcmp(tok,arr[1]) == 0){
+				if(strcmp(tok,arr[1]) == 0){ // < 
 					tok = strtok_r(rest, " \n", &rest);
 					if(tok==NULL){perror("invalid token"); exit(0);}
 					flagIO[cmdno][0] = tok;
 					continue;
 				}
-				if(strcmp(tok,arr[2]) == 0){
+				if(strcmp(tok,arr[2]) == 0){// >
 					tok = strtok_r(rest, " \n", &rest);
 					if(tok==NULL){perror("invalid token"); exit(0);}
 					flagIO[cmdno][1] = tok;
 					continue;
 				}
-				if(strcmp(tok,arr[3]) == 0){
+				if(strcmp(tok,arr[3]) == 0){// >> 
 					tok = strtok_r(rest, " \n", &rest);
 					if(tok==NULL){perror("invalid token"); exit(0);}
 					flagIO[cmdno][2] = tok;
@@ -345,10 +338,6 @@ int main(){
 					for(int z=0; z<3; ++z) multipipe_controlblock();
 					break;
 				}
-				if(strcmp(tok,arr[6]) == 0){
-					isbg = 1;
-					break;
-				}
 				args[cmdno][j] = tok;
 				++j;
 			}
@@ -362,6 +351,9 @@ int main(){
 		}
 		
 		if(restart==1) continue;
+
+		// print_args_flagIO();
+		// exit(0);
 	
 		processCount = cmdcnt;
 
@@ -378,22 +370,23 @@ int main(){
 
 		for(int i=0; i<processCount; ++i){
 			if(fork()==0){
-
-				signal(SIGINT, SIG_DFL);
-
 				input_redirection_controlblock(i);
 				output_redirection_controlblock(i);
 				append_redirection_controlblock(i);
 
 				if(i==0){
-					if(flagIO[i][1]==NULL && flagIO[i][2]==NULL)dup2(fd[0][1], 1);
+					if(flagIO[i][1]==NULL && flagIO[i][2]==NULL){
+						if(multi_pipe > 0){ 
+							dup2(fd[0][1], 1);
+						}else{
+							if(processCount > 1){
+								dup2(fd[0][1], 1);
+							}
+						}
+					}
 				} else if(i==processCount-1){
 					if(flagIO[i][0]==NULL)dup2(fd[i-1][0], 0);
 					if(multi_pipe > 0)dup2(fd[i][1], 1);
-					else
-					{
-						// SET GROUP
-					}
 				} else {
 					if(flagIO[i][0]==NULL)dup2(fd[i-1][0], 0);
 					if(flagIO[i][1]==NULL && flagIO[i][2]==NULL)dup2(fd[i][1], 1);
@@ -438,7 +431,6 @@ int main(){
 			
 			for(int z=0; z<multi_pipe; ++z){
 				if(fork()==0){
-					// SET GROUP
 					dup2(fd[pipeCount + z][0], 0);
 					output_redirection_controlblock(pipeCount + z);
 					append_redirection_controlblock(pipeCount + z);
