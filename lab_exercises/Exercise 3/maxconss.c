@@ -38,10 +38,15 @@ int main(int argc, char *argv[])
     }
     char ip[INET_ADDRSTRLEN];
     char **ptr = HostInfo->h_addr_list;
+    printf("Address list: \n");
     while(*ptr != NULL)
     {
-        printf("Address: %s\n",inet_ntop(HostInfo->h_addrtype, *ptr, ip, sizeof(ip)));
+        printf("Aliases: %s\n",inet_ntop(HostInfo->h_addrtype, *ptr, ip, sizeof(ip)));
         ++ptr;
     }
+    printf("IP considered: %s\n",ip);
+
+    // TO DO: check number of possible TCP connections to ip:80
+
 	return 0;
 }
