@@ -10,15 +10,53 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
-#define MAXMSGSIZE 256
+#define MAXMSGSIZE 512
 #define MAXTHREADS 10
 #define MAXUSERNAMESIZE 50
 #define TCPLIMIT 5
 #define SERVER_ADDRESS INADDR_ANY
 #define SERVER_PORT 9090
 
+struct client
+{
+	char username[MAXUSERNAMESIZE];
+	struct sockaddr_in client_address;
+	int client_socket;
+};
+
 struct sockaddr_in server_address;
 int server_socket;
+pthread_mutex_t lock;
+struct client client_list[MAXTHREADS];
+
+void client_list_init()
+{
+	for(int i=0;i<MAXTHREADS;++i)
+		memset(client_list[i].username, '\0', sizeof(client_list[i].username));
+}
+
+void add_client(char username[], struct sockaddr_in client_address, int client_socket, int thread_id)
+{
+	memset(client_list[thread_id-1].username, '\0', sizeof(client_list[thread_id-1].username));
+	strcpy(client_list[thread_id-1].username, username);
+	client_list[thread_id-1].client_address.sin_family = client_address.sin_family;
+	client_list[thread_id-1].client_address.sin_port = client_address.sin_port;
+	client_list[thread_id-1].client_address.sin_addr.s_addr = client_address.sin_addr.s_addr;
+	client_list[thread_id-1].client_socket = client_socket;
+}
+
+void remove_client(int thread_id)
+{
+	memset(client_list[thread_id-1].username, '\0', sizeof(client_list[thread_id-1].username));
+}
+
+int check_add(char username[])
+{
+	for(int i=0;i<MAXTHREADS;++i)
+		if(strcmp(username, client_list[i].username) == 0)
+			return (i+1);
+	return 0;
+}
 
 int server_init()
 {
@@ -46,15 +84,105 @@ int server_init()
 	return 0;
 }
 
-void process(char in_buffer[], char out_buffer[])
+void relay_msg(char msg[], int dest_id, int src_id)
 {
-	//TO DO
-	sprintf(out_buffer, "Message recieved: %s", in_buffer);
+	char msg_cpy[MAXMSGSIZE];
+	memset(msg_cpy, '\0', sizeof(msg_cpy));
+	sprintf(msg_cpy, "%s: %s", client_list[src_id].username, msg);
+	send(client_list[dest_id].client_socket, msg_cpy, sizeof(msg_cpy), 0);
 }
 
-void *runnable(void *arg)
+void process(char in_buffer[], char out_buffer[], int thread_id)
 {
-	printf(">> Thread initialized ...\n");
+	if(strcmp(in_buffer, "LIST") == 0)
+	{
+		printf(">> Log: LIST command recieved\n>> ");
+		sprintf(out_buffer, "Server: List of users online-");
+		int j = strlen(out_buffer);
+		for(int i=0;i<MAXTHREADS;++i)
+		{
+			if(client_list[i].username[0] == '\0')
+				continue;
+			char tmp[MAXUSERNAMESIZE+10]; memset(tmp, '\0', sizeof(tmp));
+			sprintf(tmp," %d)%s", (i+1), client_list[i].username);
+			for(int k=0;k<strlen(tmp); ++k)
+				out_buffer[k+j] = tmp[k];
+			j += strlen(tmp);
+		}
+		puts(out_buffer);
+	}
+	else if(in_buffer[0] == 'J' && in_buffer[1] == 'O' && in_buffer[2] == 'I', in_buffer[3] == 'N' && in_buffer[4] == ' ') // JOIN
+	{
+		printf(">> Log: JOIN command recieved\n>> ");
+		int i = 5;
+		while(isspace(in_buffer[i]) && i < MAXMSGSIZE)
+			i++;
+		char target[MAXUSERNAMESIZE]; 
+		memset(target, '\0', sizeof(target));
+		int j = 0;
+		while(!isspace(in_buffer[i]) && i < MAXMSGSIZE && in_buffer[i]!='\0')
+		{
+			target[j] = in_buffer[i];
+			j++; 
+			i++;
+		}
+		memset(client_list[thread_id-1].username, '\0', sizeof(client_list[thread_id-1].username));
+		strcpy(client_list[thread_id-1].username, target);
+		sprintf(out_buffer, "Server: Username updated as %s", target);
+	}
+	else if(in_buffer[0] == 'U' && in_buffer[1] == 'M' && in_buffer[2] == 'S' && in_buffer[3] == 'G' && in_buffer[4] == ' ') // UMSG
+	{
+		printf(">> Log: UMSG command recieved\n>> ");
+		int i = 5;
+		while(isspace(in_buffer[i]) && i < MAXMSGSIZE)
+			i++;
+		char target[MAXUSERNAMESIZE]; 
+		memset(target, '\0', sizeof(target));
+		int j = 0;
+		while(!isspace(in_buffer[i]) && i < MAXMSGSIZE)
+		{
+			target[j] = in_buffer[i];
+			j++; 
+			i++;
+		}
+		pthread_mutex_lock(&lock);
+		int status = check_add(target);
+		pthread_mutex_unlock(&lock);
+		if(status == 0)
+		{
+			sprintf(out_buffer, "Server: User not online. Use LIST command to see who is online.");
+		}
+		else
+		{
+			memmove(in_buffer, in_buffer+5, strlen(in_buffer)-4);
+			relay_msg(in_buffer, status-1, thread_id-1);
+			sprintf(out_buffer, "Server: Message relayed to %s", target);
+		}
+	}
+	else if(in_buffer[0] == 'B' && in_buffer[1] == 'M' && in_buffer[2] == 'S' && in_buffer[3] == 'G' && in_buffer[4] == ' ') // BMSG
+	{
+		printf(">> Log: BMSG command recieved\n>> ");
+		char buffer[MAXMSGSIZE]; memset(buffer, '\0', sizeof(buffer));
+		int j = 5;
+		while(in_buffer[j] != '\0' && j < MAXMSGSIZE)
+		{
+			buffer[j-5] = in_buffer[j];
+			j++;
+		}
+		puts(buffer);
+		for(int i=0;i<MAXTHREADS;++i)
+		{
+			if(client_list[i].username[0] == '\0')
+				continue;
+			relay_msg(buffer, i, thread_id-1);
+		}
+	}
+}
+
+void *runnable(void *tid)
+{
+	int thread_id = (int)(tid);
+	printf(">> %d Thread initialized ...\n", thread_id);
 	int client_socket;
 	struct sockaddr_in client_address;
 	int address_size = sizeof(struct sockaddr_in), hasStarted = 0;
@@ -70,7 +198,7 @@ void *runnable(void *arg)
 		}
 		printf(">> Connected to %s on remote port %d\n", inet_ntoa(client_address.sin_addr), (int) ntohs(client_address.sin_port));
 		memset(out_buffer, '\0',sizeof(out_buffer));
-		sprintf(out_buffer,"You are now connected to the server at %s running on port %d", inet_ntoa(server_address.sin_addr), (int) ntohs(server_address.sin_port));
+		sprintf(out_buffer,"Server: You are now connected to the server at %s running on port %d", inet_ntoa(server_address.sin_addr), (int) ntohs(server_address.sin_port));
 		send(client_socket, out_buffer, sizeof(out_buffer), 0);
 		// TO DO
 		hasStarted = 0;
@@ -95,7 +223,19 @@ void *runnable(void *arg)
 				{
 					for(int i=name;!isspace(in_buffer[i]) && in_buffer[i]!='\0' && i-name < MAXUSERNAMESIZE; ++i)
 						uname[i-name] = in_buffer[i];
-					sprintf(out_buffer, "Registering as %s. Use the command JOIN <username> again to change.", uname);
+					pthread_mutex_lock(&lock);
+					int status = check_add(uname);
+					if(status != 0)
+					{
+						sprintf(out_buffer, "Server: Username %s already in use. Try another username.", uname);
+						printf(">> %s: Username conflict\n", uname);
+						send(client_socket, out_buffer, sizeof(out_buffer), 0);
+						pthread_mutex_unlock(&lock);
+						continue;
+					}
+					sprintf(out_buffer, "Server: Registering as %s. Use the command JOIN <username> again to change.", uname);
+					add_client(uname, client_address, client_socket, thread_id);
+					pthread_mutex_unlock(&lock);
 					printf(">> %s registered.\n", uname);
 					hasStarted = 1;
 					send(client_socket, out_buffer, sizeof(out_buffer), 0);
@@ -104,7 +244,7 @@ void *runnable(void *arg)
 			}
 			else
 			{
-				sprintf(out_buffer, "Register username to send messages. >> JOIN <username>");
+				sprintf(out_buffer, "Server: Register username to send messages. Use JOIN <username>");
 				send(client_socket, out_buffer, sizeof(out_buffer), 0);
 			}
 		}
@@ -113,13 +253,15 @@ void *runnable(void *arg)
 		{
 			memset(in_buffer, '\0', sizeof(in_buffer));
 			memset(out_buffer, '\0', sizeof(out_buffer));
-			if(recv(client_socket, in_buffer, sizeof(in_buffer), 0) == 0)
+			if(recv(client_socket, in_buffer, sizeof(in_buffer), 0) == 0 || (strcmp(in_buffer, "LEAVE") == 0))
 			{
+				pthread_mutex_lock(&lock);
+				remove_client(thread_id);
+				pthread_mutex_unlock(&lock); 
 				printf(">> %s left\n", uname);
 				break;
 			}
-			printf(">> Processing: %s\n", in_buffer);
-			process(in_buffer, out_buffer);
+			process(in_buffer, out_buffer, thread_id);
 			send(client_socket, out_buffer, sizeof(out_buffer), 0);
 		}
 		close(client_socket);
@@ -149,13 +291,14 @@ int main()
 	}
 
 	// Set client list to default values 0.0.0.0, localhost
-	// client_list_init();
+	client_list_init();
 
 	pthread_t thread_pool[MAXTHREADS];
+	pthread_mutex_init(&lock, NULL);
 
 	for(int i=0;i<MAXTHREADS;++i)
 	{
-		pthread_create(&thread_pool[i], NULL, runnable, NULL);
+		pthread_create(&thread_pool[i], NULL, runnable, (void *)(i+1));
 	}
 
 	for(int i=0;i<MAXTHREADS;++i)
