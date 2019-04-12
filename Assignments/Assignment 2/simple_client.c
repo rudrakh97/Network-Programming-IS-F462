@@ -41,6 +41,12 @@ void *to_server(void *args)
 			printf(">> %s: ", uname);
 		memset(buffer, '\0', sizeof(buffer));
 		gets(buffer);
+		if(strlen(buffer) < 4)
+		{
+			pthread_cond_wait(&cond, &lock);
+			pthread_mutex_unlock(&lock);
+			continue;
+		}
 		send(server_socket, buffer, sizeof(buffer), 0);
 		if(strcmp(buffer, "LEAVE") == 0)
 		{

@@ -177,6 +177,10 @@ void process(char in_buffer[], char out_buffer[], int thread_id)
 			relay_msg(buffer, i, thread_id-1);
 		}
 	}
+	else
+	{
+		sprintf(out_buffer,"Command %s invalid. Usage:\t1)JOIN <username>\t2)BMSG <msg>\t3)UMSG <target> <msg>\t4)LIST",in_buffer);
+	}
 }
 
 void *runnable(void *tid)
