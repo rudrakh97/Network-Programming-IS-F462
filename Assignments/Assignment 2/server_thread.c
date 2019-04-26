@@ -257,7 +257,7 @@ void *runnable(void *tid)
 		{
 			memset(in_buffer, '\0', sizeof(in_buffer));
 			memset(out_buffer, '\0', sizeof(out_buffer));
-			if(recv(client_socket, in_buffer, sizeof(in_buffer), 0) == 0 || (strcmp(in_buffer, "LEAVE") == 0))
+			if(recv(client_socket, in_buffer, sizeof(in_buffer), 0) == 0 || (strcmp(in_buffer, "LEAV") == 0))
 			{
 				pthread_mutex_lock(&lock);
 				remove_client(thread_id);
