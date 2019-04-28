@@ -96,8 +96,8 @@ void process(char in_buffer[], char out_buffer[], int thread_id)
 {
 	if(strcmp(in_buffer, "LIST") == 0)
 	{
-		printf(">> Log: LIST command recieved\n>> ");
-		sprintf(out_buffer, "Server: List of users online-");
+		printf("[+] LIST command recieved\n");
+		sprintf(out_buffer, "List of users online-");
 		int j = strlen(out_buffer);
 		for(int i=0;i<MAXTHREADS;++i)
 		{
@@ -113,7 +113,7 @@ void process(char in_buffer[], char out_buffer[], int thread_id)
 	}
 	else if(in_buffer[0] == 'J' && in_buffer[1] == 'O' && in_buffer[2] == 'I', in_buffer[3] == 'N' && in_buffer[4] == ' ') // JOIN
 	{
-		printf(">> Log: JOIN command recieved\n>> ");
+		printf("[+] JOIN command recieved\n");
 		int i = 5;
 		while(isspace(in_buffer[i]) && i < MAXMSGSIZE)
 			i++;
@@ -132,7 +132,7 @@ void process(char in_buffer[], char out_buffer[], int thread_id)
 	}
 	else if(in_buffer[0] == 'U' && in_buffer[1] == 'M' && in_buffer[2] == 'S' && in_buffer[3] == 'G' && in_buffer[4] == ' ') // UMSG
 	{
-		printf(">> Log: UMSG command recieved\n>> ");
+		printf("[+] UMSG command recieved\n");
 		int i = 5;
 		while(isspace(in_buffer[i]) && i < MAXMSGSIZE)
 			i++;
@@ -154,14 +154,14 @@ void process(char in_buffer[], char out_buffer[], int thread_id)
 		}
 		else
 		{
-			memmove(in_buffer, in_buffer+5, strlen(in_buffer)-4);
+			memmove(in_buffer, in_buffer+5+strlen(target), strlen(in_buffer)-4-strlen(target));
 			relay_msg(in_buffer, status-1, thread_id-1);
 			sprintf(out_buffer, "Server: Message relayed to %s", target);
 		}
 	}
 	else if(in_buffer[0] == 'B' && in_buffer[1] == 'M' && in_buffer[2] == 'S' && in_buffer[3] == 'G' && in_buffer[4] == ' ') // BMSG
 	{
-		printf(">> Log: BMSG command recieved\n>> ");
+		printf("[+] BMSG command recieved\n");
 		char buffer[MAXMSGSIZE]; memset(buffer, '\0', sizeof(buffer));
 		int j = 5;
 		while(in_buffer[j] != '\0' && j < MAXMSGSIZE)
@@ -186,7 +186,7 @@ void process(char in_buffer[], char out_buffer[], int thread_id)
 void *runnable(void *tid)
 {
 	int thread_id = (int)(tid);
-	printf(">> %d Thread initialized ...\n", thread_id);
+	printf("[+] Thread initialized ...\n", thread_id);
 	int client_socket;
 	struct sockaddr_in client_address;
 	int address_size = sizeof(struct sockaddr_in), hasStarted = 0;
@@ -197,10 +197,10 @@ void *runnable(void *tid)
 		client_socket = accept(server_socket, (struct sockaddr*)&client_address, &address_size);
 		if(client_socket == -1)
 		{
-			printf(">> Connection accept error ...\n");
+			printf("[-] Connection accept error ...\n");
 			continue;
 		}
-		printf(">> Connected to %s on remote port %d\n", inet_ntoa(client_address.sin_addr), (int) ntohs(client_address.sin_port));
+		printf("[+] Connected to %s on remote port %d\n", inet_ntoa(client_address.sin_addr), (int) ntohs(client_address.sin_port));
 		memset(out_buffer, '\0',sizeof(out_buffer));
 		sprintf(out_buffer,"Server: You are now connected to the server at %s running on port %d", inet_ntoa(server_address.sin_addr), (int) ntohs(server_address.sin_port));
 		send(client_socket, out_buffer, sizeof(out_buffer), 0);
@@ -211,7 +211,7 @@ void *runnable(void *tid)
 			memset(in_buffer, '\0', sizeof(in_buffer));
 			memset(out_buffer, '\0', sizeof(out_buffer));
 			recv(client_socket, in_buffer, sizeof(in_buffer), 0);
-			printf(">> Processing: %s\n", in_buffer);
+			// printf("[+] Processing: %s\n", in_buffer);
 			int name = 4;
 			if(in_buffer[0] == 'J' && in_buffer[1] == 'O' && in_buffer[2] == 'I' && in_buffer[3] == 'N') // JOIN
 			{
@@ -232,7 +232,7 @@ void *runnable(void *tid)
 					if(status != 0)
 					{
 						sprintf(out_buffer, "Server: Username %s already in use. Try another username.", uname);
-						printf(">> %s: Username conflict\n", uname);
+						printf("[+] %s: Username conflict\n", uname);
 						send(client_socket, out_buffer, sizeof(out_buffer), 0);
 						pthread_mutex_unlock(&lock);
 						continue;
@@ -240,7 +240,7 @@ void *runnable(void *tid)
 					sprintf(out_buffer, "Server: Registering as %s. Use the command JOIN <username> again to change.", uname);
 					add_client(uname, client_address, client_socket, thread_id);
 					pthread_mutex_unlock(&lock);
-					printf(">> %s registered.\n", uname);
+					printf("[+] %s registered.\n", uname);
 					hasStarted = 1;
 					send(client_socket, out_buffer, sizeof(out_buffer), 0);
 					break;
@@ -262,7 +262,7 @@ void *runnable(void *tid)
 				pthread_mutex_lock(&lock);
 				remove_client(thread_id);
 				pthread_mutex_unlock(&lock); 
-				printf(">> %s left\n", uname);
+				printf("[-] %s left\n", uname);
 				break;
 			}
 			process(in_buffer, out_buffer, thread_id);
@@ -275,7 +275,7 @@ void *runnable(void *tid)
 void exit_handler(int sig_no)
 {
 	close(server_socket);
-	printf("\n>> Server closed\n");
+	printf("\n[-] Server closed\n");
 	signal(sig_no, SIG_DFL);
 	raise(sig_no);
 }
@@ -290,7 +290,7 @@ int main()
 	// Initialise server socket
 	if(server_init() == -1)
 	{
-		perror(">> Server initialisation error");
+		perror("[-] Server initialisation error");
 		exit(1);
 	}
 
