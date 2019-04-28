@@ -165,7 +165,6 @@ int main()
 				close(events[i].data.fd);
 				continue;
 			}
-			printf("[+] Log: Reading from server ...\n");
 			from_server();
 		}
 	}

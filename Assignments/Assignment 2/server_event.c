@@ -187,10 +187,11 @@ void process(int index)
 		if(status == 0)
 		{
 			sprintf(outbuff, "Server: User not online. Use LIST command to see who is online.");
+			relay_msg(outbuff, index-1, -1);
 		}
 		else
 		{
-			memmove(inbuff, inbuff+5, strlen(inbuff)-4);
+			memmove(inbuff, inbuff+5+strlen(target), strlen(inbuff)-4-strlen(target));
 			relay_msg(inbuff, status-1, index-1);
 			sprintf(outbuff, "Message relayed to %s", target);
 			relay_msg(outbuff, index-1, -1);
