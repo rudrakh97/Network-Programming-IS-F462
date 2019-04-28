@@ -1,0 +1,2 @@
+all:
+	gcc maxconss.c
