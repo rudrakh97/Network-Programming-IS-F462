@@ -1,0 +1,32 @@
+BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI (RAJASTHAN)
+II SEMESTER 2018-2019
+LAB-2 EXERCISE
+Course No.: IS F462
+Deadline: 15th Feb
+
+Course Title: Network Programming
+Maximum Marks: 20M
+
+Write a C program pipes.c that does the following.
+
+1. P1 is the parent and it creates 5 children C1...C5. Note that all children are siblings.
+2. P1 sets up pipes in way that all children are connected through pipes as shown in the above
+diagram.
+3. P1 writes a paragraph (read from stdin
+stdin)) to C1. C1 reads till EOF and performs an
+operation. Every child reads until EOF
+EOF. The operation for each child is
+a. C1: lower to upper case
+b. C2: remove first char
+c. C3: remove last char
+d. C4: remove first char
+e. C5: remove last char
+4. Every child prints its name and pid, and string output.
+5. Final output is printed by parent.
+
+Files Expected: A tar file <idno>_lab
+<idno>_lab2.tar containing pipes.c
+.c and makefile to compile your
+program.
+
+

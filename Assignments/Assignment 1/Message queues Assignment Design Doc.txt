@@ -1,0 +1,58 @@
+Group Messaging System
+Rudrakh Panigrahi | 2015A3PS0289P
+Vineeth Naroju | 2015A7PS0121P
+
+─
+Functionalities
+●
+●
+●
+●
+●
+●
+
+List groups
+Join groups
+Send messages to groups
+Receive message from groups
+Logout (go offline)
+Login (come online)
+
+Design features
+msgq_client.c (Client)
+→ !list ​- This command lists out all the active groups (groups with at least one member).
+The groups are represented by a group id.
+→ !join <group_id> -​ This command joins the client to the specified group number (may or
+may not be present in the list). Client can join multiple groups.
+→ !logout ​- This command logs out the client. The client can still interact with the console
+(to login), but it stops receiving messages from groups.
+→ !login ​- This command enables the client to login if logged out earlier. This command
+must be used to login before sending any messages after logout. The client will receive
+messages from all the groups it was part of (if any) when it was logged out.
+→ @<group_id><space><message> ​- Format to send ​<message> t​ o the group having
+group id as ​<group_id>​. Client cannot send messages to a group before joining it.
+→ The client queue is in the format ​/<pid>q.
+→ The parent process keeps reading from the client queue (opened with ​O_NONBLOCK
+flag). The child process reads messages from user (STDIN) and sends them to the server. If
+logged out, the parent process is sent to a waiting state due to a ​SIGUSR1 s​ ignal from the
+
+2
+
+child. When client logs in, child sends a ​SIGUSR2 s​ ignal to the parent to resume reading
+from the client queue. Now parent dumps all the messages received while in logout state.
+→ The messages received are of the format ​<message><space><pid> w
+​ here ​<pid> i​ s the
+process id of the client who sent the message to the group.
+→ On exit (SIGTSTP, SIGQUIT, SIGINT), it closes and unlinks all message queues.
+
+msgq_server.c (Server)
+→ ​Server queue name - /​ sq
+→ Keeps log of all the messages sent to the groups and broadcasts messages to the
+intended groups (except the client who sent it).
+→ Has a lookup table to maintain record of clients part of all the groups.
+→ Maintains a list of active groups.
+→ Appends pid of the client who sent the message to indicate who sent the message in the
+group.
+→ On exit (SIGTSTP, SIGQUIT, SIGINT), it closes and unlinks all message queues.
+
+

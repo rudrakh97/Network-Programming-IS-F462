@@ -1,0 +1,17 @@
+BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI (RAJASTHAN)
+II SEMESTER 2018-2019
+LAB-5 EXERCISE
+Course No.: IS F462
+Deadline: 20th April
+
+Course Title: Network Programming
+Maximum Marks: 20M
+
+Write a C program for the following:
+The program should take a URL such as ubuntu iso as CLA. It should download the file. Also it
+should enlarge TCP receive buffer and then download again. The time taken for both should be
+printed.
+Files Expected: A tar file <idno>_lab5.tar containing multiple_file_download.c and makefile to
+compile your program.
+
+

@@ -1,0 +1,16 @@
+BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI (RAJASTHAN)
+II SEMESTER 2018-2019
+LAB-3 EXERCISE
+Course No.: IS F462
+Deadline: 20th April
+
+Course Title: Network Programming
+Maximum Marks: 20M
+
+Write a C program for the following:
+The program should take a website URL as CLA and print maximum number of concurrent TCP
+connections that website supports.
+Files Expected: A tar file <idno>_lab3.tar containing max_conns.c and makefile to compile your
+program.
+
+

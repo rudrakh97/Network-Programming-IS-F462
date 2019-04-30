@@ -1,0 +1,26 @@
+BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI (RAJASTHAN)
+II SEMESTER 2018-2019
+LAB-1 EXERCISE
+Course No.: IS F462
+Deadline: 31st Jan
+
+Course Title: Network Programming
+Maximum Marks: 20M
+
+Write a program signal.c taking N, K, L, and M as CLA for the following requirement.
+(a) Parent process creates N processes and each of the N processes creates K child
+processes.
+(b) Each process selects a random number between 1 and 31 (except SIGKILL and
+SIGSTOp) and sends that signal to one of the randomly selected process (among
+N). Process should print signal number and the process id to the console.
+(c) Each process follows step (b) M number of times. After that it checks if the
+number of signals received is less than L, then it will terminate. Else it repeats
+step(b) M number of times. When it terminates, it should print a message "Process
+<pid> received x number of signals. So terminating.
+(d) Before beginning the loop in (c), a process which has a child will check if all of its
+children exited. If yes, it will also exit printing "Process <pid> exiting becuase all its
+children exited".
+Files Expected: A tar file <idno>_lab1.tar containing signal.c and makefile to compile
+your program.
+
+

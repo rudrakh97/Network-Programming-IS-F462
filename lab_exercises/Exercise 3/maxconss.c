@@ -31,7 +31,6 @@ void handler() // Signals children to exit and breaks connection loop
 
 int main(int argc, char *argv[])
 {
-    // Argument error handling
     if(argc < 2)
     {
         printf("[-] Enter a URL to check. Exiting ...\n");
@@ -68,15 +67,13 @@ int main(int argc, char *argv[])
     }
     printf("[+] IP considered: %s\n",ip);
 
-    // TO DO: check number of possible TCP connections to ip:80
-
     signal(SIGUSR1, parent_count);
     signal(SIGUSR2, handler);
 
     int server_socket;
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(9090);
+    server_address.sin_port = htons(80);
     inet_pton(AF_INET, ip, &(server_address.sin_addr.s_addr));
 
     while(!break_loop)
@@ -108,6 +105,7 @@ int main(int argc, char *argv[])
             // store child pids
             child_pids[counter] = pid;
             counter ++;
+            wait(NULL);
         }
     }
 
