@@ -13,6 +13,7 @@
 
 // Client side won't allow more than 65535 different connections
 #define MAX_TCP 66000
+#define PORT 12345
 
 int count = 0, isparent = 1, break_loop = 0, counter = 0;
 int child_pids[MAX_TCP];
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
     int server_socket;
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(80);
+    server_address.sin_port = htons(PORT);
     inet_pton(AF_INET, ip, &(server_address.sin_addr.s_addr));
 
     while(!break_loop)
@@ -82,12 +83,14 @@ int main(int argc, char *argv[])
         // Each child opens a new TCP connection
         if(pid == 0)
         {
+            wait(NULL);
             isparent = 0;
             server_socket = socket(AF_INET, SOCK_STREAM, 0);
             int connection_status = connect(server_socket, (struct sockaddr*)(&server_address), sizeof(server_address));
             if(connection_status != -1)
             {
                 // increase counter in parent
+                printf("pid %d success\n", getpid());
                 kill(getppid(), SIGUSR1);
                 // keep connection alive till server limit reached
                 wait(NULL);
@@ -95,8 +98,10 @@ int main(int argc, char *argv[])
             }
             else
             {
+                printf("pid %d failed\n", getpid());
                 // Server limit reached. Send signal to parent to stop loop
                 kill(getppid(), SIGUSR2);
+                wait(NULL);
                 exit(0);
             }
         }
@@ -105,6 +110,8 @@ int main(int argc, char *argv[])
             // store child pids
             child_pids[counter] = pid;
             counter ++;
+            printf("%d %d\n",count, pid);
+            kill(pid, SIGUSR1);
             wait(NULL);
         }
     }
